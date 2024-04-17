@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Project24</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="appwidget_text">EXAMPLE</string>
+    <string name="configure">Configure</string>
+    <string name="add_widget">Add widget</string>
+    <string name="app_widget_description">This is an app widget description</string>
+    <string name="default_web_client_id">547046004661-jpi8m7sv8lfmqt9cgg3828er63apo694.apps.googleusercontent.com</string>
+    <string name="type_your_message">Type your message...</string>
+    <string name="floating_button">Floating button</string>
+    <string name="base_url">http://51.20.89.113:80</string>
+    <string name="settings">Settings</string>
+    <string name="notification_permission_text">Intellect gonna need this permission to send udpates regarding followups and more.</string>
+    <string name="notification_permission_title">Intellect Update Permission\n</string>
+</resources>

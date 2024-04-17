@@ -1,0 +1,10 @@
+Learn -> crave -> build
+
+Authentication is not necessary initially
+
+Initially we can work upon the following:
+
+Very Initially we are gonna work on Gmails for easy access to the data.
+
+After that other conversational data can be added. -> like whatsapp chats, other notifications data.
+ and then Generating a report of the user’s activity.
