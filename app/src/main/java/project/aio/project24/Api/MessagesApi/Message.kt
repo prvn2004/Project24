@@ -11,5 +11,6 @@ data class Message(
     @SerializedName("isBot")
     val isBot: Boolean,
     @SerializedName("timestamp")
-    val timestamp: Date // Assuming timestamp is in milliseconds
+    val timestamp: Date,
+    val isPending : Boolean = false
 )

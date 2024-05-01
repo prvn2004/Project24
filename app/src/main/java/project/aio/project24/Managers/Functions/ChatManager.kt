@@ -17,44 +17,46 @@ import kotlinx.coroutines.withContext
 import project.aio.project24.Api.ChatsApi.Chat
 import project.aio.project24.Api.ChatsApi.ChatViewModel
 import project.aio.project24.Main.ChatFragment
+import project.aio.project24.Main.ChatHistoryAdapter
 import project.aio.project24.Managers.PreferenceManagers.AuthPreferenceManager
 import retrofit2.Response
 
-class ChatManager(private val chatViewModel: ChatViewModel, private val root: View, private val userGoogleDetailsManager: UserGoogleDetailsManager) {
+class ChatManager(
+    private val chatViewModel: ChatViewModel,
+    private val root: View,
+    private val userGoogleDetailsManager: UserGoogleDetailsManager
+) {
 
     var currentChatId: String = ""
 
-fun createNewChat(): Deferred<String> {
-    val chatData = mapOf(
-        "participantId" to userGoogleDetailsManager.getUID(),
-    )
-    val chatJson = convertToJson(chatData)
+    fun createNewChat(private_mode: Boolean): Deferred<String> {
+        val chatData = mapOf(
+            "participantId" to userGoogleDetailsManager.getUID(),
+            "private_mode" to "$private_mode"
+        )
+        val chatJson = convertToJson(chatData)
 
-    return CoroutineScope(Dispatchers.Main).async {
-        val response = chatViewModel.startChat(chatJson)
-        handleResponse(response)
-        currentChatId
+        return CoroutineScope(Dispatchers.Main).async {
+            val response = chatViewModel.startChat(chatJson)
+            handleResponse(response)
+            currentChatId
+        }
     }
-}
 
     fun fetchAllChats(participantId: String, rvChatHistory: RecyclerView) {
         CoroutineScope(Dispatchers.IO).launch {
             val response = chatViewModel.getChats(participantId)
             if (response.isSuccessful) {
-                val chats = response.body()
-
-                chats?.sortedWith(compareBy { it.timestamp })
+                val chats = response.body()?.sortedByDescending { it.timestamp }
 
                 withContext(Dispatchers.Main) {
-                    (rvChatHistory.adapter as ChatFragment.ChatHistoryAdapter).submitList(chats)
+                    (rvChatHistory.adapter as ChatHistoryAdapter).submitList(chats)
                 }
             } else {
                 // Handle error
             }
         }
     }
-
-
 
 
     private fun convertToJson(data: Map<String, String?>): JsonObject {

@@ -6,6 +6,7 @@ import android.content.SharedPreferences
 class ChatCurrentPreferenceManager(context: Context) {
     val PREFS_NAME = "ChatPreferences"
     val CURRENT_VALUE = "current_value"
+    val CURRENT_CHAT_ID = "current_chat_id"
 
     //0 -> GLOBAL
     //1 -> PRIVATE
@@ -27,6 +28,16 @@ class ChatCurrentPreferenceManager(context: Context) {
     // Update
     fun updateCurrentValue(value: Boolean) {
         setCurrentValue(value)
+    }
+
+    fun setCurrentChatId(chatId: String) {
+        val editor = sharedPreferences.edit()
+        editor.putString(CURRENT_CHAT_ID, chatId)
+        editor.apply()
+    }
+
+    fun getCurrentChatId(): String{
+        return sharedPreferences.getString(CURRENT_CHAT_ID, "").toString()
     }
 
     // Delete

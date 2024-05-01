@@ -3,6 +3,7 @@ package project.aio.project24.Main
 import UserGoogleDetailsManager
 import android.Manifest
 import android.app.Dialog
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -72,7 +73,18 @@ import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 
 
-class ChatFragment : Fragment() {
+class ChatFragment : Fragment(), ChatHistoryAdapter.OnItemClickListener {
+
+    override fun onItemClick(chat: Chat) {
+        chatCurrentPreferenceManager.setCurrentChatId(chat._id)
+        currentChatId = chat._id
+        messageList.clear()
+        adapter.notifyDataSetChanged()
+        CoroutineScope(Dispatchers.IO).launch {
+            socketManager.getAllMessages(chatCurrentPreferenceManager.getCurrentChatId())
+        }
+        binding.drawerLayout.closeDrawer(GravityCompat.START)
+    }
 
     companion object {
         private val RC_SIGN_IN = 1001
@@ -147,56 +159,21 @@ class ChatFragment : Fragment() {
 
         notificationPermissionManagers.checkPermissions()
 
-//        val launcher = registerForActivityResult(
-//            ActivityResultContracts.RequestPermission()
-//        ) { isGranted ->
-//            if (isGranted){
-//                notificationPreferenceManager.setNotificationEnabled(true)
-//            } else {
-//                // permission denied or forever denied
-//            }
-//        }
-//
-//        if (checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) == PermissionChecker.PERMISSION_GRANTED){
-//            // permission granted
-//        } else {
-////            if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)){
-////                // show rationale and then launch launcher to request permission
-////            } else
-////            {
-//                // first request or forever denied case
-//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-//                    launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-//
-//                    CoroutineScope(Dispatchers.IO).launch {
-//                        preferenceDatabaseManager.addPreference(
-//                            notificationPreferenceManager.NotificationPreferences,
-//                            notificationPreferenceManager.IS_ENABLED,
-//                            notificationPreferenceManager.isNotificationEnabled().toString()
-//                        )
-//                        preferenceDatabaseManager.addPreference(
-//                            notificationPreferenceManager.NotificationPreferences,
-//                            notificationPreferenceManager.FCM_TOKEN_VALUE,
-//                            notificationPreferenceManager.getFcmTokenValue().toString()
-//                        )
-//                    }
-//                }
-////            }
-//        }
+        chatCurrentPreferenceManager.setCurrentChatId("")
 
 
 //        scheduler.scheduleAtFixedRate({
 //            if (connectionService.isConnectingToInternet) {
-                Log.d("testing", "Connecting to socket")
-                try {
-                    if (!socketManager.isConnected()) {
-                        socketManager.connect()
-                    }
-                } catch (e: Exception) {
-                    Snackbar.make(
-                        binding.root, "Failed to connect to socket", Snackbar.LENGTH_SHORT
-                    ).show()
-                }
+        Log.d("testing", "Connecting to socket")
+        try {
+            if (!socketManager.isConnected()) {
+                socketManager.connect()
+            }
+        } catch (e: Exception) {
+            Snackbar.make(
+                binding.root, "Failed to connect to socket", Snackbar.LENGTH_SHORT
+            ).show()
+        }
 //            } else {
 //                Snackbar.make(
 //                    binding.root,
@@ -206,21 +183,44 @@ class ChatFragment : Fragment() {
 //            }
 //        }, 0, 5, TimeUnit.SECONDS)
 
-        socketManager.onMessageReceived { code, json ->
-            Log.d("testing", "Message received: $json")
+        socketManager.onMessageReceived { value, code, json ->
 
-            val jsonString = json.toString()
+            if(value == 0){
+                Log.d("testing", "Message received: $json")
 
+                val jsonString = json.toString()
 
-            val gson = Gson()
-            val message = gson.fromJson(jsonString, Message::class.java)
+                adapter.removePendingMessage()
 
-            CoroutineScope(Dispatchers.Main).launch {
-                messageManager.handleResponse(code, message)
+                val gson = Gson()
+                val message = gson.fromJson(jsonString, Message::class.java)
+
+                if (message.chatId != "" || message.chatId != null) {
+                    chatCurrentPreferenceManager.setCurrentChatId(message.chatId)
+                    currentChatId = message.chatId
+                }
+
+                CoroutineScope(Dispatchers.Main).launch {
+                    messageManager.handleResponse(code, message)
+                }
+            }
+
+            if(value == 1){
+                Log.d("testing", "All messages received: $json")
+
+                val jsonString = json.toString()
+
+                val gson = Gson()
+                val messages = gson.fromJson(jsonString, Array<Message>::class.java)
+
+                CoroutineScope(Dispatchers.Main).launch {
+                    messageManager.handleAllMessages(code, messages)
+                }
             }
         }
 
-//       ------------------------------------------------------------------------------------------
+//       -----------------------------------
+//       -------------------------------------------------------
         //Testing Completed
 
         rvMessages = binding.recyclerViewMessages
@@ -235,7 +235,7 @@ class ChatFragment : Fragment() {
             binding.navigationView.getHeaderView(0)
                 .findViewById<RecyclerView>(R.id.recycler_view_chat_history)
         rvChatHistory.layoutManager = LinearLayoutManager(requireContext())
-        rvChatHistory.adapter = ChatHistoryAdapter()
+        rvChatHistory.adapter = ChatHistoryAdapter(requireContext(), this)
 
         followupAdapter = FollowupAdapter()
         rvFollowups = binding.followupRv
@@ -272,30 +272,6 @@ class ChatFragment : Fragment() {
 
         chatManager.fetchAllChats(userGoogleDetailsManager.getUID(), rvChatHistory)
 
-//        scheduler.scheduleAtFixedRate(
-//            {
-//                if (connectionService.isConnectingToInternet && connectionService.isURLReachable) {
-                    try {
-                        CoroutineScope(Dispatchers.Main).launch {
-                            currentChatId = chatManager.createNewChat().await()
-                            scheduler.shutdownNow()
-                        }
-                    } catch (e: Exception) {
-                        Snackbar.make(
-                            binding.root, "Failed to connect to socket", Snackbar.LENGTH_SHORT
-                        ).show()
-                    }
-//                }
-//    else {
-//                    Snackbar.make(
-//                        binding.root,
-//                        "Failed to connect to server, check internet ",
-//                        Snackbar.LENGTH_SHORT
-//                    ).show()
-//                }
-//            }, 0, 5, TimeUnit.SECONDS
-//        )
-
         binding.settings.setOnClickListener {
             findNavController().navigate(R.id.action_mobile_navigation_to_settingFragment)
         }
@@ -304,7 +280,7 @@ class ChatFragment : Fragment() {
             try {
                 messageManager.sendMessage(
                     binding.editTextMessage.text.toString(),
-                    currentChatId,
+                    chatCurrentPreferenceManager.getCurrentChatId(),
                     requireContext(),
                     socketManager
                 )
@@ -348,9 +324,8 @@ class ChatFragment : Fragment() {
                             chatCurrentPreferenceManager.getCurrentValue().toString()
                         )
                     }
-                    CoroutineScope(Dispatchers.IO).launch {
-                        currentChatId = chatManager.createNewChat().await()
-                    }
+                    currentChatId = ""
+                    chatCurrentPreferenceManager.setCurrentChatId("")
                     messageList.clear()
                     adapter.notifyDataSetChanged()
                     binding.followupLayout.visibility = View.VISIBLE
@@ -364,9 +339,12 @@ class ChatFragment : Fragment() {
                             chatCurrentPreferenceManager.getCurrentValue().toString()
                         )
                     }
-                    CoroutineScope(Dispatchers.IO).launch {
-                        currentChatId = chatManager.createNewChat().await()
-                    }
+                    currentChatId = ""
+                    chatCurrentPreferenceManager.setCurrentChatId("")
+
+//                    CoroutineScope(Dispatchers.IO).launch {
+//                        currentChatId = chatManager.createNewChat(false).await()
+//                    }
                     messageList.clear()
                     adapter.notifyDataSetChanged()
                     binding.followupLayout.visibility = View.VISIBLE
@@ -406,71 +384,95 @@ class ChatFragment : Fragment() {
         super.onDestroy()
     }
 
-    class FollowupAdapter :
-        RecyclerView.Adapter<FollowupAdapter.FollowupViewHolder>() {
-        private var followups = emptyList<FollowupsModel>()
+}
 
-        class FollowupViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-            val tvTitle: TextView = itemView.findViewById(R.id.tv_chat_name)
-            val tvReferenceMail: TextView = itemView.findViewById(R.id.tv_reference_email)
+class FollowupAdapter :
+    RecyclerView.Adapter<FollowupAdapter.FollowupViewHolder>() {
+    private var followups = emptyList<FollowupsModel>()
 
-        }
+    class FollowupViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val tvTitle: TextView = itemView.findViewById(R.id.tv_chat_name)
+        val tvReferenceMail: TextView = itemView.findViewById(R.id.tv_reference_email)
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FollowupViewHolder {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.item_recent_chat, parent, false)
-            return FollowupViewHolder(view)
-        }
-
-        override fun onBindViewHolder(holder: FollowupViewHolder, position: Int) {
-            val followup = followups[position]
-            holder.tvTitle.text = followup.title
-
-            val referenceMailsText = StringBuilder()
-            for (referenceMail in followup.referenceMail) {
-                val date = Date(referenceMail.date.toLong())
-                val format = SimpleDateFormat("dd MMMM HH:mm", Locale.getDefault())
-                val time = format.format(date)
-                referenceMailsText.append("From: ${referenceMail.from} \nDate: $time \nSubject: ${referenceMail.subject}\n\n")
-            }
-            holder.tvReferenceMail.text = referenceMailsText.toString()
-        }
-
-        override fun getItemCount() = followups.size
-
-        fun submitList(list: List<FollowupsModel>?) {
-            followups = list ?: emptyList()
-            notifyDataSetChanged()
-        }
     }
 
-    class ChatHistoryAdapter : RecyclerView.Adapter<ChatHistoryAdapter.ChatHistoryViewHolder>() {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FollowupViewHolder {
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_recent_chat, parent, false)
+        return FollowupViewHolder(view)
+    }
 
-        private var chatList = emptyList<Chat>()
+    override fun onBindViewHolder(holder: FollowupViewHolder, position: Int) {
+        val followup = followups[position]
+        holder.tvTitle.text = followup.title
 
-        class ChatHistoryViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-            val tvTimestamp: TextView = itemView.findViewById(R.id.text_view_message)
+        val referenceMailsText = StringBuilder()
+        for (referenceMail in followup.referenceMail) {
+            val date = Date(referenceMail.date.toLong())
+            val format = SimpleDateFormat("dd MMMM HH:mm", Locale.getDefault())
+            val time = format.format(date)
+            referenceMailsText.append("From: ${referenceMail.from} \nDate: $time \nSubject: ${referenceMail.subject}\n\n")
         }
+        holder.tvReferenceMail.text = referenceMailsText.toString()
+    }
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ChatHistoryViewHolder {
-            val view =
-                LayoutInflater.from(parent.context)
-                    .inflate(R.layout.item_chat_history, parent, false)
-            return ChatHistoryViewHolder(view)
-        }
+    override fun getItemCount() = followups.size
 
-        override fun onBindViewHolder(holder: ChatHistoryViewHolder, position: Int) {
-            val chat = chatList[position]
-            holder.tvTimestamp.text = chat.timestamp.toString()
-        }
+    fun submitList(list: List<FollowupsModel>?) {
+        followups = list ?: emptyList()
+        notifyDataSetChanged()
+    }
+}
 
-        override fun getItemCount(): Int {
-            return chatList.size
-        }
+class ChatHistoryAdapter(val context: Context, private val listener: OnItemClickListener) :
+    RecyclerView.Adapter<ChatHistoryAdapter.ChatHistoryViewHolder>() {
 
-        fun submitList(list: List<Chat>?) {
-            chatList = list ?: emptyList()
-            notifyDataSetChanged()
+    var chatList = emptyList<Chat>()
+    lateinit var chatCurrentPreferenceManager: ChatCurrentPreferenceManager
+    lateinit var chatManager: ChatManager
+
+    interface OnItemClickListener {
+        fun onItemClick(chat: Chat)
+    }
+
+    class ChatHistoryViewHolder(
+        itemView: View,
+        private val chatList: List<Chat>
+    ) :
+        RecyclerView.ViewHolder(itemView) {
+        val tvTimestamp: TextView = itemView.findViewById(R.id.text_view_message)
+
+//            init {
+//                itemView.setOnClickListener {
+//                    val position = adapterPosition
+//                }
+//            }
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ChatHistoryViewHolder {
+        chatCurrentPreferenceManager = ChatCurrentPreferenceManager(context)
+        val view =
+            LayoutInflater.from(parent.context)
+                .inflate(R.layout.item_chat_history, parent, false)
+        return ChatHistoryViewHolder(view, chatList)
+    }
+
+    override fun onBindViewHolder(holder: ChatHistoryViewHolder, position: Int) {
+        val chat = chatList[position]
+        var chattitle = "Greetings"
+        if (chat.chatTitle != "") {
+            chattitle = chat.chatTitle
         }
+        holder.tvTimestamp.text = chattitle
+        holder.itemView.setOnClickListener { listener.onItemClick(chat) }
+    }
+
+    override fun getItemCount(): Int {
+        return chatList.size
+    }
+
+    fun submitList(list: List<Chat>?) {
+        chatList = list ?: emptyList()
+        notifyDataSetChanged()
     }
 }

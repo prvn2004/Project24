@@ -30,6 +30,10 @@ class Chat {
     var _id: String = ""
     @SerializedName("messages")
     var messages: List<Message> = emptyList()
+    @SerializedName("private_mode")
+    var private_mode : Boolean = false
     @SerializedName("timestamp")
     var timestamp : Date = Date()
+    @SerializedName("chatTitle")
+    var chatTitle : String = ""
 }

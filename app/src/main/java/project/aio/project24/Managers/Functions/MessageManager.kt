@@ -49,6 +49,7 @@ class MessageManager(
         val message = Message(currentChatId, messageContent, false, currentTime)
         addMessageToList(message)
 
+        adapter.addMessage(Message("", "", false, Date(), true))
 
         val messageData = mapOf(
             "chatId" to currentChatId, "content" to messageContent, "isBot" to false
@@ -119,6 +120,27 @@ class MessageManager(
                 404 -> showSnackbar("Gemini model failure, retry after 60 seconds")
                 500 -> showSnackbar("Server failure")
                 else -> showSnackbar("Failed to send message")
+            }
+        }
+    }
+
+    fun handleAllMessages(code: Int, response: Array<Message>) {
+        if (code == 201) {
+            val messages = response
+            for (message in messages) {
+                val chatId = message.chatId
+                val content = message.content
+                val isBot = message.isBot
+                val timestamp = message.timestamp
+
+                val message = Message(chatId, content, isBot, timestamp)
+                addMessageToList(message)
+            }
+        } else {
+            when (code) {
+                404 -> showSnackbar("Gemini model failure, retry after 60 seconds")
+                500 -> showSnackbar("Server failure")
+                else -> showSnackbar("Failed to get messages")
             }
         }
     }

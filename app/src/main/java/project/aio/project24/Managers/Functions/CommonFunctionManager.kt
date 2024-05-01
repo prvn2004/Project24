@@ -21,7 +21,7 @@ class CommonFunctionManager {
 
     fun retrofitBuilder(): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("http://51.20.89.113:80")
+            .baseUrl("http://10.38.0.85:3000")
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }

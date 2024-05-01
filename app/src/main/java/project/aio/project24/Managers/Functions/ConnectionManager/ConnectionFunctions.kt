@@ -36,7 +36,7 @@ class ConnectionFunctions(private val context: Context) {
             val netInfo = cm.activeNetworkInfo
             return if (netInfo != null && netInfo.isConnected) {
                 try {
-                    val url = URL("51.20.89.113:80") // Insert Url
+                    val url = URL("http://10.38.0.85:3000") // Insert Url
                     val urlc = url.openConnection() as HttpURLConnection
                     urlc.connectTimeout = 10 * 1000 // 10 s.
                     try {
